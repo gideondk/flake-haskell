@@ -3,7 +3,7 @@
 module Main where
 
 import           Control.Monad (forever, when)
-import           Data.Bits (shiftL, xor)
+import           Data.Bits ((.|.), shiftL)
 import qualified Data.ByteString as B
 import           Data.ByteString.Char8 ()
 import qualified Data.Time.Clock.POSIX as CP
@@ -29,7 +29,8 @@ intToBase62 =
     chars62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 macToInt :: NI.MAC -> Int
-macToInt (NI.MAC a b c d e f) = foldl (\acc x -> (shiftL acc 8) `xor` (fromIntegral x :: Int)) 0 [a, b, c, d, e, f]   
+macToInt (NI.MAC a b c d e f) =
+  foldl (\acc x -> (shiftL acc 8) .|. (fromIntegral x :: Int)) 0 [a, b, c, d, e, f]   
 
 
 genId :: Integer -> NI.MAC -> U.Unique -> B.ByteString

@@ -7,6 +7,7 @@ import           Data.Bits ((.|.), shiftL)
 import qualified Data.ByteString as B
 import           Data.ByteString.Char8 ()
 import           Data.List (foldl')
+import           Data.Maybe (listToMaybe)
 import qualified Data.Time.Clock.POSIX as CP
 import qualified Data.Unique as U
 import           Data.Word (Word64)
@@ -46,17 +47,22 @@ genId t m u =
 main :: IO ()
 main = do
     args <- getArgs
-    when (length args < 1) $ do
+    when (length args /= 1) $ do
         hPutStrLn stderr "usage: flake <ethernet_device>"
         exitFailure
+
     let ethernetDevice = args !! 0
     interfaces <- NI.getNetworkInterfaces
-    let m = NI.mac $ head $ filter (\a -> NI.name a == ethernetDevice) interfaces
+    case listToMaybe $ filter ((ethernetDevice ==) . NI.name) interfaces of
+      Just iface ->
+        ZMQ.withContext 1 $ \c ->
+            ZMQ.withSocket c ZMQ.Rep $ \s -> do
+                ZMQ.bind s "tcp://*:5555"
+                loop (NI.mac iface) s
+      Nothing    -> do
+        hPutStrLn stderr "Unknown ethernet interface"
+        exitFailure
 
-    ZMQ.withContext 1 $ \c ->
-        ZMQ.withSocket c ZMQ.Rep $ \s -> do
-            ZMQ.bind s "tcp://*:5555"
-            loop m s
   where
     loop m s = forever $ do
         _ <- ZMQ.receive s

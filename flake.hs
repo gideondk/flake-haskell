@@ -6,8 +6,10 @@ import           Control.Monad (forever, when)
 import           Data.Bits ((.|.), shiftL)
 import qualified Data.ByteString as B
 import           Data.ByteString.Char8 ()
+import           Data.List (foldl')
 import qualified Data.Time.Clock.POSIX as CP
 import qualified Data.Unique as U
+import           Data.Word (Word64)
 import qualified Network.Info as NI
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
@@ -28,9 +30,9 @@ intToBase62 =
       where (q, r) = quotRem n 62
     chars62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-macToInt :: NI.MAC -> Int
+macToInt :: NI.MAC -> Word64
 macToInt (NI.MAC a b c d e f) =
-  foldl (\acc x -> (shiftL acc 8) .|. (fromIntegral x :: Int)) 0 [a, b, c, d, e, f]   
+  foldl' (\acc byte -> shiftL acc 8 .|. fromIntegral byte) 0 [a, b, c, d, e, f]
 
 
 genId :: Integer -> NI.MAC -> U.Unique -> B.ByteString

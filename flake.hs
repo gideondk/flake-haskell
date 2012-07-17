@@ -44,13 +44,13 @@ getMicroTime = with (MkCTimeval 0 0) $ \ptval -> do
 
 -- Base 62 conversion
 intToBase62 :: Integer -> String
-intToBase62 n = go n ""
-  where go n cs
-          | n == (toInteger 0) = cs
-	  | otherwise = go q (c : cs)
+intToBase62 = go ""
+  where go cs n
+          | n == 0 = cs
+	  | otherwise = go (c : cs) q
           where (q, r) = quotRem n 62
                 c = chooseChar62 r
-                chooseChar62 n = chars62 `genericIndex` n
+                chooseChar62 m = chars62 `genericIndex` m
                 chars62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
@@ -83,7 +83,7 @@ main = do
             loop m s
   where
     loop m s = forever $ do
-        msg <- ZMQ.receive s
+        _ <- ZMQ.receive s
         currentTime <- getMicroTime
         unique <- U.newUnique
         let flake = genId currentTime m unique 

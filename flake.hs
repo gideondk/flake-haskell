@@ -1,9 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import           Control.Monad (forever, when)
 import           Data.Bits (shiftL, xor)
-import           Data.ByteString.Char8 (pack)
-import           Data.List (genericIndex)
+import qualified Data.ByteString as B
+import           Data.ByteString.Char8 ()
 import qualified Data.Unique as U
 import           Data.Word (Word64)
 import           Foreign.C.Types (CInt(..), CLong)
@@ -42,23 +44,21 @@ getMicroTime = with (MkCTimeval 0 0) $ \ptval -> do
         else fail ("error in gettimeofday: " ++ (show result))
     where f (MkCTimeval a b) = fromIntegral a * 1000000 + fromIntegral b
 
--- Base 62 conversion
-intToBase62 :: Integer -> String
-intToBase62 = go ""
-  where go cs n
-          | n == 0 = cs
-	  | otherwise = go (c : cs) q
-          where (q, r) = quotRem n 62
-                c = chooseChar62 r
-                chooseChar62 m = chars62 `genericIndex` m
-                chars62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
+intToBase62 :: Integer -> B.ByteString
+intToBase62 =
+  B.unfoldr toChar
+  where
+    toChar n
+      | n == 0    = Nothing
+      | otherwise = return (B.index chars62 (fromIntegral r), q)
+      where (q, r) = quotRem n 62
+    chars62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 macToInt :: NI.MAC -> Int
 macToInt (NI.MAC a b c d e f) = foldl (\acc x -> (shiftL acc 8) `xor` (fromIntegral x :: Int)) 0 [a, b, c, d, e, f]   
 
 
-genId :: MicroTime -> NI.MAC -> U.Unique -> String
+genId :: MicroTime -> NI.MAC -> U.Unique -> B.ByteString
 genId t m u =
     let timestamp = toInteger t
         shifted  = timestamp `shiftL` 32
@@ -87,4 +87,4 @@ main = do
         currentTime <- getMicroTime
         unique <- U.newUnique
         let flake = genId currentTime m unique 
-        ZMQ.send s [] $ pack flake
+        ZMQ.send s [] flake

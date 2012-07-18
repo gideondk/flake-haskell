@@ -1,24 +1,24 @@
 module Main where
 
-import Data.Time.Clock (diffUTCTime, getCurrentTime)
-import Text.Printf
-
-
-import System.ZMQ3
-import Data.ByteString.Char8 (pack, unpack)
+import qualified Data.ByteString as B
+import           Data.ByteString.Lex.Integral (packDecimal)
+import           Data.Time.Clock (diffUTCTime, getCurrentTime)
+import           Text.Printf
+import qualified System.ZMQ3 as ZMQ
 
 main :: IO ()
-main = withContext 1 $ \c -> withSocket c Req act
+main = ZMQ.withContext 1 $ \c -> ZMQ.withSocket c ZMQ.Req act
 
-act :: (Receiver a, Sender a) => Socket a -> IO ()
+act :: (ZMQ.Receiver a, ZMQ.Sender a) => ZMQ.Socket a -> IO ()
 act sock = do
-  connect sock "tcp://localhost:5555"
+  ZMQ.connect sock "tcp://localhost:5555"
   begin <- getCurrentTime
   putStrLn "Requesting 10000 keys"
   flip mapM_ ([1..10000] :: [Int]) $ \i -> do
-    let msg = show i
-    send sock [] $ pack msg 
-    recv <- receive sock
+    case packDecimal i of
+      Just msg -> ZMQ.send sock [] msg 
+      Nothing  -> ZMQ.send sock [] B.empty -- Whatever
+    recv <- ZMQ.receive sock
     return recv
   end <- getCurrentTime
   let diff = realToFrac $ diffUTCTime end begin :: Double
